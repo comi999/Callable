@@ -140,7 +140,7 @@ public:
 	template < typename Lambda >
 	inline FunctionTraits::EnableIfLambda< Lambda, bool > operator==( Lambda& a_Lambda ) const
 	{
-		return m_Invocation == FunctorLambda< Lambda >;
+		return m_Invocation == FunctorLambda< Lambda > && m_Object == &a_Lambda;
 	}
 
 	/// <summary>
@@ -192,7 +192,7 @@ public:
 	template < typename Lambda >
 	inline FunctionTraits::EnableIfLambda< Lambda, bool > operator!=( Lambda& a_Lambda )
 	{
-		return m_Invocation != FunctorLambda< Lambda >;
+		return !operator!=( a_Lambda );
 	}
 
 	/// <summary>
