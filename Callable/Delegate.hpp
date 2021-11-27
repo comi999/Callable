@@ -131,15 +131,15 @@ public:
 	/// <summary>
 	/// Invoke all stored invokers and store their returns in a given vector.
 	/// </summary>
-	void InvokeAll( vector< Return >& a_Output, Args... a_Args )
+	void InvokeAll( vector< Return >& o_Output, Args... a_Args )
 	{
-		a_Output.reserve( m_Invokers.size() + a_Output.size() );
+		o_Output.reserve( m_Invokers.size() + o_Output.size() );
 
 		m_IsInvoking = true;
 
 		for ( auto Iterator = m_Invokers.begin(); Iterator != m_Invokers.end(); ++Iterator )
 		{
-			a_Output.push_back( ( *Iterator )( a_Args... ) );
+			o_Output.push_back( ( *Iterator )( a_Args... ) );
 		}
 
 		m_IsInvoking = false;
@@ -209,6 +209,17 @@ public:
 	}
 
 	/// <summary>
+	/// Add a lambda function as an invoker to the end of the invocation list. Will return a handle
+	/// for added invoker.
+	/// </summary>
+	template < typename Lambda >
+	inline FunctionTraits::EnableIfLambda< Lambda, DelegateHandle > Add( Lambda&& a_Lambda )
+	{
+		m_Invokers.emplace_back( a_Lambda );
+		return reinterpret_cast< DelegateHandle >( &m_Invokers.back() );
+	}
+
+	/// <summary>
 	/// Add a member function as an invoker to the end of an invocation list. Will return a handle
 	/// for added invoker.
 	/// </summary>
@@ -261,6 +272,15 @@ public:
 	/// </summary>
 	template < typename Lambda >
 	inline FunctionTraits::EnableIfLambda< Lambda, DelegateHandle > Insert( const iterator& a_Where, Lambda& a_Lambda )
+	{
+		return reinterpret_cast< DelegateHandle >( &*m_Invokers.emplace( a_Where, a_Lambda ) );
+	}
+
+	/// <summary>
+	/// Insert a lambda function into the invocation list. Will return a handle for added invoker.
+	/// </summary>
+	template < typename Lambda >
+	inline FunctionTraits::EnableIfLambda< Lambda, DelegateHandle > Insert( const iterator& a_Where, Lambda&& a_Lambda )
 	{
 		return reinterpret_cast< DelegateHandle >( &*m_Invokers.emplace( a_Where, a_Lambda ) );
 	}
@@ -358,6 +378,8 @@ public:
 				{
 					m_Invokers.erase( Iterator );
 				}
+
+				return true;
 			}
 		}
 
@@ -379,6 +401,109 @@ public:
 		}
 
 		return true;
+	}
+
+	/// <summary>
+	/// Safely remove an invoker containing a given lambda. Will not be removed until delegate has finished invoking.
+	/// </summary>
+	template < typename Lambda >
+	FunctionTraits::EnableIfLambda< Lambda, bool > Remove( Lambda& a_Lambda )
+	{
+		for ( auto Iterator = m_Invokers.begin(); Iterator != m_Invokers.end(); ++Iterator )
+		{
+			if ( &*Iterator == a_Lambda )
+			{
+				if ( m_IsInvoking )
+				{
+					m_ToRemove.push_back( Iterator );
+				}
+				else
+				{
+					m_Invokers.erase( Iterator );
+				}
+
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/// <summary>
+	/// Safely remove an invoker containing the given object instance. Will not be removed until delegate has finished invoking.
+	/// </summary>
+	template < typename Object >
+	FunctionTraits::DisableIfFunction< Object, bool > Remove( const Object& a_Object )
+	{
+		for ( auto Iterator = m_Invokers.begin(); Iterator != m_Invokers.end(); ++Iterator )
+		{
+			if ( &*Iterator == a_Object )
+			{
+				if ( m_IsInvoking )
+				{
+					m_ToRemove.push_back( Iterator );
+				}
+				else
+				{
+					m_Invokers.erase( Iterator );
+				}
+
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/// <summary>
+	/// Safely remove an invoker containing the given object instance. Will not be removed until delegate has finished invoking.
+	/// </summary>
+	template < typename Object >
+	FunctionTraits::DisableIfFunction< Object, bool > Remove( const Object* a_Object )
+	{
+		for ( auto Iterator = m_Invokers.begin(); Iterator != m_Invokers.end(); ++Iterator )
+		{
+			if ( &*Iterator == a_Object )
+			{
+				if ( m_IsInvoking )
+				{
+					m_ToRemove.push_back( Iterator );
+				}
+				else
+				{
+					m_Invokers.erase( Iterator );
+				}
+
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/// <summary>
+	/// Safely remove an invoker containing the given static function. Will not be removed until delegate has finished invoking.
+	/// </summary>
+	bool Remove( StaticFunction a_StaticFunction )
+	{
+		for ( auto Iterator = m_Invokers.begin(); Iterator != m_Invokers.end(); ++Iterator )
+		{
+			if ( &*Iterator == a_StaticFunction )
+			{
+				if ( m_IsInvoking )
+				{
+					m_ToRemove.push_back( Iterator );
+				}
+				else
+				{
+					m_Invokers.erase( Iterator );
+				}
+
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	/// <summary>
@@ -437,6 +562,77 @@ public:
 	void ForceRemove( const iterator& a_Where )
 	{
 		m_Invokers.erase( a_Where );
+	}
+
+	/// <summary>
+	/// Safely remove an invoker containing a given lambda. Will not be removed until delegate has finished invoking.
+	/// </summary>
+	template < typename Lambda >
+	FunctionTraits::EnableIfLambda< Lambda, bool > ForceRemove( Lambda& a_Lambda )
+	{
+		for ( auto Iterator = m_Invokers.begin(); Iterator != m_Invokers.end(); ++Iterator )
+		{
+			if ( &*Iterator == a_Lambda )
+			{
+				m_Invokers.erase( Iterator );
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/// <summary>
+	/// Safely remove an invoker containing the given object instance. Will not be removed until delegate has finished invoking.
+	/// </summary>
+	template < typename Object >
+	FunctionTraits::DisableIfFunction< Object, bool > ForceRemove( const Object& a_Object )
+	{
+		for ( auto Iterator = m_Invokers.begin(); Iterator != m_Invokers.end(); ++Iterator )
+		{
+			if ( &*Iterator == a_Object )
+			{
+				m_Invokers.erase( Iterator );
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/// <summary>
+	/// Safely remove an invoker containing the given object instance. Will not be removed until delegate has finished invoking.
+	/// </summary>
+	template < typename Object >
+	FunctionTraits::DisableIfFunction< Object, bool > ForceRemove( const Object* a_Object )
+	{
+		for ( auto Iterator = m_Invokers.begin(); Iterator != m_Invokers.end(); ++Iterator )
+		{
+			if ( &*Iterator == a_Object )
+			{
+				m_Invokers.erase( Iterator );
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/// <summary>
+	/// Safely remove an invoker containing the given static function. Will not be removed until delegate has finished invoking.
+	/// </summary>
+	bool ForceRemove( StaticFunction a_StaticFunction )
+	{
+		for ( auto Iterator = m_Invokers.begin(); Iterator != m_Invokers.end(); ++Iterator )
+		{
+			if ( &*Iterator == a_StaticFunction )
+			{
+				m_Invokers.erase( Iterator );
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	/// <summary>
@@ -586,6 +782,15 @@ public:
 	}
 
 	/// <summary>
+	/// Add a lambda function onto the end of the invocation list.
+	/// </summary>
+	template < typename Lambda >
+	FunctionTraits::EnableIfLambda< Lambda, void > operator+=( Lambda&& a_Lambda )
+	{
+		m_Invokers.emplace_back( a_Lambda );
+	}
+
+	/// <summary>
 	/// Add a static function onto the end of the invocation list.
 	/// </summary>
 	void operator+=( StaticFunction a_StaticFunction )
@@ -721,6 +926,44 @@ public:
 	}
 
 	/// <summary>
+	/// Get Handle at given index. Will be an invalid handle if index is out of range.
+	/// </summary>
+	DelegateHandle GetHandle( size_t a_Index ) const
+	{
+		auto Iterator = GetIterator( a_Index );
+		return Iterator != m_Invokers.end() ? &*Iterator : nullptr;
+	}
+
+	/// <summary>
+	/// Get Handle at given position.
+	/// </summary>
+	DelegateHandle GetHandle( iterator a_Where ) const
+	{
+		return &*a_Where;
+	}
+
+	/// <summary>
+	/// Is the given handle valid in this delegate. Time complexity is O(n).
+	/// </summary>
+	inline bool IsHandleValid( DelegateHandle a_DelegateHandle ) const
+	{
+		if ( !a_DelegateHandle )
+		{
+			return false;
+		}
+
+		for ( auto Iterator = m_Invokers.begin(); Iterator != m_Invokers.end(); ++Iterator )
+		{
+			if ( &*Iterator == a_DelegateHandle )
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/// <summary>
 	/// Begin iterator.
 	/// </summary>
 	inline iterator begin()
@@ -767,9 +1010,28 @@ private:
 		m_ToRemove.clear();
 	}
 
+	iterator GetIterator( size_t a_Index )
+	{
+		if ( a_Index <= m_Invokers.size() * 0.5f )
+		{
+			auto Iterator = m_Invokers.begin();
+			advance( Iterator, a_Index );
+			return Iterator;
+		}
+		else if ( a_Index < m_Invokers.end() )
+		{
+			auto Iterator = m_Invokers.end();
+			advance( Iterator, static_cast< uint64_t >( m_Invokers.size() - a_Index ) );
+			return Iterator;
+		}
+
+		return m_Invokers.end();
+	}
+
 	template < class T, class U > friend auto MakeDelegate( T*, U );
 	template < class T, class U > friend auto MakeDelegate( T&, U );
-	template < class T          > friend auto MakeDelegate( T );
+	template < class T          > friend auto MakeDelegate( T&    );
+	template < class T          > friend auto MakeDelegate( T&&   );
 
 	//==========================================================================
 	list< InvokerType > m_Invokers;
@@ -783,6 +1045,17 @@ private:
 //==========================================================================
 template < typename T >
 FunctionTraits::EnableIfFunction< T, Delegate<>::AsDelegate< T > > MakeDelegate( T& a_Function )
+{
+	Delegate<>::AsDelegate< T > Result;
+	Result.Add( a_Function );
+	return Result;
+}
+
+//==========================================================================
+// Make delegate from given function.
+//==========================================================================
+template < typename T >
+FunctionTraits::EnableIfFunction< T, Delegate<>::AsDelegate< T > > MakeDelegate( T&& a_Function )
 {
 	Delegate<>::AsDelegate< T > Result;
 	Result.Add( a_Function );

@@ -1,6 +1,6 @@
 #pragma once
 #include <tuple>
-
+#include <typeinfo>
 #include "FunctionTraits.hpp"
 
 //==========================================================================
@@ -39,6 +39,12 @@ private:
 	template < typename T >
 	using AsInvoker = typename AsInvokerImpl< FunctionTraits::GetReturn< T >, FunctionTraits::GetArguments< T > >::Type;
 
+	template < typename T >
+	using EnableIfInvoker = enable_if_t< is_same_v< Invoker< Return, Args... >, T >, void >;
+
+	template < typename T >
+	using DisableIfInvoker = enable_if_t< !is_same_v< Invoker< Return, Args... >, T >, void >;
+
 public:
 
 	/// <summary>
@@ -62,8 +68,18 @@ public:
 	/// <summary>
 	/// Lambda function constructor.
 	/// </summary>
-	template < typename Lambda, typename = FunctionTraits::EnableIfLambda< Lambda, void > >
+	template < typename Lambda, typename = FunctionTraits::EnableIfLambda< Lambda, void >, typename = DisableIfInvoker< Lambda > >
 	Invoker( Lambda& a_Lambda )
+		: m_Object( reinterpret_cast< void* >( &a_Lambda ) )
+		, m_Function( nullptr )
+		, m_Invocation( FunctorLambda< Lambda > )
+	{ }
+
+	/// <summary>
+	/// Lambda function constructor.
+	/// </summary>
+	template < typename Lambda, typename = FunctionTraits::EnableIfLambda< Lambda, void >, typename = DisableIfInvoker< Lambda > >
+	Invoker( Lambda&& a_Lambda )
 		: m_Object( reinterpret_cast< void* >( &a_Lambda ) )
 		, m_Function( nullptr )
 		, m_Invocation( FunctorLambda< Lambda > )
@@ -140,7 +156,7 @@ public:
 	template < typename Lambda >
 	inline FunctionTraits::EnableIfLambda< Lambda, bool > operator==( Lambda& a_Lambda ) const
 	{
-		return m_Invocation == FunctorLambda< Lambda > && m_Object == &a_Lambda;
+		return m_Invocation == FunctorLambda< Lambda >;
 	}
 
 	/// <summary>
@@ -294,7 +310,8 @@ private:
 	template < class, class...  > friend class Delegate;
 	template < class T, class U > friend auto MakeInvoker( T*, U );
 	template < class T, class U > friend auto MakeInvoker( T&, U );
-	template < class T          > friend auto MakeInvoker( T& );
+	template < class T          > friend auto MakeInvoker( T&    );
+	template < class T          > friend auto MakeInvoker( T&&   );
 
 	//==========================================================================
 	InvocationFunction m_Invocation;
@@ -307,7 +324,16 @@ private:
 // Make invoker from given function.
 //==========================================================================
 template < typename T >
-FunctionTraits::EnableIfFunction< T, Invoker<>::AsInvoker< T > > MakeInvoker( T& a_Function )
+inline FunctionTraits::EnableIfFunction< T, Invoker<>::AsInvoker< T > > MakeInvoker( T& a_Function )
+{
+	return Invoker<>::AsInvoker< T >( a_Function );
+}
+
+//==========================================================================
+// Make invoker from given function.
+//==========================================================================
+template < typename T >
+inline FunctionTraits::EnableIfFunction< T, Invoker<>::AsInvoker< T > > MakeInvoker( T&& a_Function )
 {
 	return Invoker<>::AsInvoker< T >( a_Function );
 }
@@ -316,7 +342,7 @@ FunctionTraits::EnableIfFunction< T, Invoker<>::AsInvoker< T > > MakeInvoker( T&
 // Make invoker from given function and object instance.
 //==========================================================================
 template < typename T, typename U >
-FunctionTraits::EnableIfFunction< U, Invoker<>::AsInvoker< U > > MakeInvoker( T* a_Object, U a_Member )
+inline FunctionTraits::EnableIfFunction< U, Invoker<>::AsInvoker< U > > MakeInvoker( T* a_Object, U a_Member )
 {
 	return Invoker<>::AsInvoker< U >( a_Object, a_Member );
 }
@@ -325,7 +351,7 @@ FunctionTraits::EnableIfFunction< U, Invoker<>::AsInvoker< U > > MakeInvoker( T*
 // Make invoker from given function and object instance.
 //==========================================================================
 template < typename T, typename U >
-FunctionTraits::EnableIfFunction< U, Invoker<>::AsInvoker< U > > MakeInvoker( T& a_Object, U a_Member )
+inline FunctionTraits::EnableIfFunction< U, Invoker<>::AsInvoker< U > > MakeInvoker( T& a_Object, U a_Member )
 {
 	return Invoker<>::AsInvoker< U >( a_Object, a_Member );
 }
