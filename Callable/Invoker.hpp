@@ -117,7 +117,7 @@ public:
 	/// <summary>
 	/// Invoke stored function. Will return default value if not set.
 	/// </summary>
-	inline Return Invoke( Args... a_Args )
+	inline Return Invoke( Args... a_Args ) const
 	{
 		if ( !IsSet() )
 		{
