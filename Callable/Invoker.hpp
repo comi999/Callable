@@ -63,7 +63,7 @@ public:
 	/// Lambda function constructor.
 	/// </summary>
 	template < typename Lambda, typename = FunctionTraits::EnableIfLambda< Lambda, void > >
-	Invoker( Lambda a_Lambda )
+	Invoker( Lambda& a_Lambda )
 		: m_Object( reinterpret_cast< void* >( &a_Lambda ) )
 		, m_Function( nullptr )
 		, m_Invocation( FunctorLambda< Lambda > )
@@ -138,7 +138,7 @@ public:
 	/// Check for equality between this Invoker's stored Lambda function and another lambda function.
 	/// </summary>
 	template < typename Lambda >
-	inline FunctionTraits::EnableIfLambda< Lambda, bool > operator==( Lambda a_Lambda ) const
+	inline FunctionTraits::EnableIfLambda< Lambda, bool > operator==( Lambda& a_Lambda ) const
 	{
 		return m_Invocation == FunctorLambda< Lambda >;
 	}
@@ -190,7 +190,7 @@ public:
 	/// Check for inequality between this Invoker's stored Lambda function and another lambda function.
 	/// </summary>
 	template < typename Lambda >
-	inline FunctionTraits::EnableIfLambda< Lambda, bool > operator!=( Lambda a_Lambda )
+	inline FunctionTraits::EnableIfLambda< Lambda, bool > operator!=( Lambda& a_Lambda )
 	{
 		return m_Invocation != FunctorLambda< Lambda >;
 	}
@@ -294,7 +294,7 @@ private:
 	template < class, class...  > friend class Delegate;
 	template < class T, class U > friend auto MakeInvoker( T*, U );
 	template < class T, class U > friend auto MakeInvoker( T&, U );
-	template < class T          > friend auto MakeInvoker( T );
+	template < class T          > friend auto MakeInvoker( T& );
 
 	//==========================================================================
 	InvocationFunction m_Invocation;
@@ -307,7 +307,7 @@ private:
 // Make invoker from given function.
 //==========================================================================
 template < typename T >
-FunctionTraits::EnableIfFunction< T, Invoker<>::AsInvoker< T > > MakeInvoker( T a_Function )
+FunctionTraits::EnableIfFunction< T, Invoker<>::AsInvoker< T > > MakeInvoker( T& a_Function )
 {
 	return Invoker<>::AsInvoker< T >( a_Function );
 }

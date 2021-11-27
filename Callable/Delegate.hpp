@@ -202,7 +202,7 @@ public:
 	/// for added invoker.
 	/// </summary>
 	template < typename Lambda >
-	inline FunctionTraits::EnableIfLambda< Lambda, DelegateHandle > Add( Lambda a_Lambda )
+	inline FunctionTraits::EnableIfLambda< Lambda, DelegateHandle > Add( Lambda& a_Lambda )
 	{
 		m_Invokers.emplace_back( a_Lambda );
 		return reinterpret_cast< DelegateHandle >( &m_Invokers.back() );
@@ -213,7 +213,7 @@ public:
 	/// for added invoker.
 	/// </summary>
 	template < typename Object >
-	inline DelegateHandle Add( Object* a_Object, MemberFunction< Object > a_MemberFunction )
+	inline FunctionTraits::DisableIfFunction< Object, DelegateHandle > Add( Object* a_Object, MemberFunction< Object > a_MemberFunction )
 	{
 		m_Invokers.emplace_back( a_Object, a_MemberFunction );
 		return reinterpret_cast< DelegateHandle >( &m_Invokers.back() );
@@ -224,7 +224,7 @@ public:
 	/// for added invoker.
 	/// </summary>
 	template < typename Object >
-	inline DelegateHandle Add( Object& a_Object, MemberFunction< Object > a_MemberFunction )
+	inline FunctionTraits::DisableIfFunction< Object, DelegateHandle > Add( Object& a_Object, MemberFunction< Object > a_MemberFunction )
 	{
 		m_Invokers.emplace_back( a_Object, a_MemberFunction );
 		return reinterpret_cast< DelegateHandle >( &m_Invokers.back() );
@@ -243,7 +243,7 @@ public:
 	/// <summary>
 	/// Insert an invoker into the invocation list. Will return a handle for added invoker.
 	/// </summary>
-	DelegateHandle Insert( const const_iterator& a_Where, const InvokerType& a_Invoker )
+	DelegateHandle Insert( const iterator& a_Where, const InvokerType& a_Invoker )
 	{
 		return reinterpret_cast< DelegateHandle >( &*m_Invokers.insert( a_Where, a_Invoker ) );
 	}
@@ -251,7 +251,7 @@ public:
 	/// <summary>
 	/// Insert all invokers from a delegate into the invocation list. Will return a handle for added invoker.
 	/// </summary>
-	inline void Insert( const const_iterator& a_Where, const DelegateType& a_Delegate )
+	inline void Insert( const iterator& a_Where, const DelegateType& a_Delegate )
 	{
 		m_Invokers.insert( a_Where, a_Delegate.begin(), a_Delegate.end() );
 	}
@@ -260,7 +260,7 @@ public:
 	/// Insert a lambda function into the invocation list. Will return a handle for added invoker.
 	/// </summary>
 	template < typename Lambda >
-	inline FunctionTraits::EnableIfLambda< Lambda, DelegateHandle > Insert( const const_iterator& a_Where, Lambda a_Lambda )
+	inline FunctionTraits::EnableIfLambda< Lambda, DelegateHandle > Insert( const iterator& a_Where, Lambda& a_Lambda )
 	{
 		return reinterpret_cast< DelegateHandle >( &*m_Invokers.emplace( a_Where, a_Lambda ) );
 	}
@@ -269,7 +269,7 @@ public:
 	/// Insert a member function into the invocation list. Will return a handle for added invoker.
 	/// </summary>
 	template < typename Object >
-	inline DelegateHandle Insert( const const_iterator& a_Where, Object* a_Object, MemberFunction< Object > a_MemberFunction )
+	inline DelegateHandle Insert( const iterator& a_Where, Object* a_Object, MemberFunction< Object > a_MemberFunction )
 	{
 		return reinterpret_cast< DelegateHandle >( &*m_Invokers.emplace( a_Where, a_Object, a_MemberFunction ) );
 	}
@@ -278,7 +278,7 @@ public:
 	/// Insert a member function into the invocation list. Will return a handle for added invoker.
 	/// </summary>
 	template < typename Object >
-	inline DelegateHandle Insert( const const_iterator& a_Where, Object& a_Object, MemberFunction< Object > a_MemberFunction )
+	inline DelegateHandle Insert( const iterator& a_Where, Object& a_Object, MemberFunction< Object > a_MemberFunction )
 	{
 		return reinterpret_cast< DelegateHandle >( &*m_Invokers.emplace( a_Where, a_Object, a_MemberFunction ) );
 	}
@@ -286,7 +286,7 @@ public:
 	/// <summary>
 	/// Insert a static function into the invocation list. Will return a handle for added invoker.
 	/// </summary>
-	inline DelegateHandle Insert( const const_iterator& a_Where, StaticFunction a_StaticFunction )
+	inline DelegateHandle Insert( const iterator& a_Where, StaticFunction a_StaticFunction )
 	{
 		return reinterpret_cast< DelegateHandle >( &*m_Invokers.emplace( a_Where, a_StaticFunction ) );
 	}
@@ -306,7 +306,7 @@ public:
 
 		if ( m_IsInvoking )
 		{
-			m_ToRemove.insert( Iterator );
+			m_ToRemove.push_back( Iterator );
 		}
 		else
 		{
@@ -327,7 +327,7 @@ public:
 			{
 				if ( m_IsInvoking )
 				{
-					m_ToRemove.insert( Iterator );
+					m_ToRemove.push_back( Iterator );
 				}
 				else
 				{
@@ -352,7 +352,7 @@ public:
 			{
 				if ( m_IsInvoking )
 				{
-					m_ToRemove.insert( Iterator );
+					m_ToRemove.push_back( Iterator );
 				}
 				else
 				{
@@ -367,16 +367,11 @@ public:
 	/// <summary>
 	/// Safely remove an invoker at a given position. Will not be removed until delegate has finished invoking.
 	/// </summary>
-	bool Remove( const const_iterator& a_Where )
+	bool Remove( const iterator& a_Where )
 	{
-		if ( !( a_Where >= m_Invokers.begin() && a_Where < m_Invokers.end() ) )
-		{
-			return false;
-		}
-
 		if ( m_IsInvoking )
 		{
-			m_ToRemove.insert( a_Where );
+			m_ToRemove.push_back( a_Where );
 		}
 		else
 		{
@@ -439,22 +434,16 @@ public:
 	/// <summary>
 	/// Remove an invoker at a given position.
 	/// </summary>
-	bool ForceRemove( const const_iterator& a_Where )
+	void ForceRemove( const iterator& a_Where )
 	{
-		if ( !( a_Where >= m_Invokers.begin() && a_Where < m_Invokers.end() ) )
-		{
-			return false;
-		}
-
 		m_Invokers.erase( a_Where );
-		return true;
 	}
 
 	/// <summary>
 	/// Remove all invokers that contain given invoker.
 	/// </summary>
 	template < typename Lambda >
-	FunctionTraits::EnableIfLambda< Lambda, void > RemoveAll( Lambda a_Lambda )
+	FunctionTraits::EnableIfLambda< Lambda, void > RemoveAll( Lambda& a_Lambda )
 	{
 		if ( m_IsInvoking )
 		{
@@ -591,7 +580,7 @@ public:
 	/// Add a lambda function onto the end of the invocation list.
 	/// </summary>
 	template < typename Lambda >
-	FunctionTraits::EnableIfLambda< Lambda, void > operator+=( Lambda a_Lambda )
+	FunctionTraits::EnableIfLambda< Lambda, void > operator+=( Lambda& a_Lambda )
 	{
 		m_Invokers.emplace_back( a_Lambda );
 	}
@@ -632,7 +621,7 @@ public:
 	/// <summary>
 	/// Remove an invoker at a given position from the invocation list.
 	/// </summary>
-	void operator-=( const const_iterator& a_Where )
+	void operator-=( const iterator& a_Where )
 	{
 		m_Invokers.erase( a_Where );
 	}
@@ -656,7 +645,7 @@ public:
 	/// Remove an invoker containing given lambda from the invocation list.
 	/// </summary>
 	template < typename Lambda >
-	FunctionTraits::EnableIfLambda< Lambda, void > operator-=( Lambda a_Lambda )
+	FunctionTraits::EnableIfLambda< Lambda, void > operator-=( Lambda& a_Lambda )
 	{
 		for ( auto Iterator = m_Invokers.begin(); Iterator != m_Invokers.end(); ++Iterator )
 		{
@@ -734,22 +723,6 @@ public:
 	/// <summary>
 	/// Begin iterator.
 	/// </summary>
-	inline const_iterator begin() const
-	{
-		return m_Invokers.begin();
-	}
-
-	/// <summary>
-	/// End iterator.
-	/// </summary>
-	inline const_iterator end() const
-	{
-		return m_Invokers.end();
-	}
-
-	/// <summary>
-	/// Begin iterator.
-	/// </summary>
 	inline iterator begin()
 	{
 		return m_Invokers.begin();
@@ -759,6 +732,22 @@ public:
 	/// End iterator.
 	/// </summary>
 	inline iterator end()
+	{
+		return m_Invokers.end();
+	}
+
+	/// <summary>
+	/// Begin iterator.
+	/// </summary>
+	inline const_iterator begin() const
+	{
+		return m_Invokers.begin();
+	}
+
+	/// <summary>
+	/// End iterator.
+	/// </summary>
+	inline const_iterator end() const
 	{
 		return m_Invokers.end();
 	}
@@ -778,11 +767,14 @@ private:
 		m_ToRemove.clear();
 	}
 
-	template < class... T > friend auto MakeDelegate( T... );
+	template < class T, class U > friend auto MakeDelegate( T*, U );
+	template < class T, class U > friend auto MakeDelegate( T&, U );
+	template < class T          > friend auto MakeDelegate( T );
 
-	list< InvokerType >    m_Invokers;
-	list< const_iterator > m_ToRemove;
-	bool                   m_IsInvoking;
+	//==========================================================================
+	list< InvokerType > m_Invokers;
+	list< iterator >    m_ToRemove;
+	bool                m_IsInvoking;
 
 };
 
@@ -790,7 +782,7 @@ private:
 // Make delegate from given function.
 //==========================================================================
 template < typename T >
-FunctionTraits::EnableIfFunction< T, Delegate<>::AsDelegate< T > > MakeDelegate( T a_Function )
+FunctionTraits::EnableIfFunction< T, Delegate<>::AsDelegate< T > > MakeDelegate( T& a_Function )
 {
 	Delegate<>::AsDelegate< T > Result;
 	Result.Add( a_Function );
@@ -801,9 +793,9 @@ FunctionTraits::EnableIfFunction< T, Delegate<>::AsDelegate< T > > MakeDelegate(
 // Make delegate from given function and object instance.
 //==========================================================================
 template < typename T, typename U >
-FunctionTraits::EnableIfFunction< U, Delegate<>::AsDelegate< T > > MakeDelegate( T* a_Object, U a_Member )
+FunctionTraits::EnableIfFunction< U, Delegate<>::AsDelegate< U > > MakeDelegate( T* a_Object, U a_Member )
 {
-	Delegate<>::AsDelegate< T > Result;
+	Delegate<>::AsDelegate< U > Result;
 	Result.Add( a_Object, a_Member );
 	return Result;
 }
@@ -812,9 +804,9 @@ FunctionTraits::EnableIfFunction< U, Delegate<>::AsDelegate< T > > MakeDelegate(
 // Make delegate from given function and object instance.
 //==========================================================================
 template < typename T, typename U >
-FunctionTraits::EnableIfFunction< U, Delegate<>::AsDelegate< T > > MakeDelegate( T& a_Object, U a_Member )
+FunctionTraits::EnableIfFunction< U, Delegate<>::AsDelegate< U > > MakeDelegate( T& a_Object, U a_Member )
 {
-	Delegate<>::AsDelegate< T > Result;
+	Delegate<>::AsDelegate< U > Result;
 	Result.Add( a_Object, a_Member );
 	return Result;
 }
