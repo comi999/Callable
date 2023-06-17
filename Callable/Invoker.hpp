@@ -1,4 +1,4 @@
-#pragma once
+#pragma +once
 #include <vector>
 
 #include "FunctionTraits.hpp"
@@ -9,43 +9,47 @@ struct MemberFunction {};
 
 namespace InvokerHelpers
 {
-    using LambdaStorageDestructorType = void( * )( void* );
-    static constexpr uintptr_t StorageTag = ( uintptr_t )0xABCDEFABCDEFABCD;
-    static constexpr size_t LambdaDestructorOffset = sizeof( uintptr_t );
-    static constexpr size_t LambdaOffset = sizeof( uintptr_t ) + sizeof( LambdaStorageDestructorType );
-
+    using TagType = uintptr_t;
+    using DestructorType = void( * )( void* );
+    using OffsetType = size_t;
+    
+    static constexpr TagType StorageTag = ( TagType )0xABCDEFABCDEFABCD;
+    static constexpr OffsetType TagOffset = 0u;
+    static constexpr OffsetType DestructorOffset = sizeof( TagType );
+    static constexpr OffsetType LambdaOffset = DestructorOffset + sizeof( DestructorType );
+    
     template < typename T >
-    void LambdaStorageDestructor( void* a_LambdaStorage )
-    {
-        delete ( LambdaStorage< T >* )a_LambdaStorage;
-    }
+    void LambdaDestructor( void* a_LambdaStorage );
 
     template < typename T >
     struct LambdaStorage
     {
-        template < typename... Args >
-        LambdaStorage( Args&&... a_Args )
-            : Lambda( std::forward< Args >( a_Args )... )
-        {}
+        using LambdaType = T;
 
-        const uintptr_t Tag = StorageTag;
-        LambdaDestructorType LambdaDestructor = LambdaStorageDestructor< T >;
-        T Lambda;
+        const TagType Tag = StorageTag;
+        const DestructorType Destructor = LambdaDestructor< T >;
+        const LambdaType Lambda;
     };
 
-    bool IsLambdaStorage( void* a_Pointer )
+    template < typename T >
+    void LambdaDestructor( void* a_Pointer )
     {
-        return *( uintptr_t* )a_Pointer == StorageTag;
+        delete ( LambdaStorage< T >* )a_Pointer;
     }
 
-    void* GetLambdaPointer( void* a_Pointer )
+    bool IsLambda( void* a_Pointer )
+    {
+        return *( TagType* )a_Pointer == StorageTag;
+    }
+
+    void* GetLambda( void* a_Pointer )
     {
         return ( uint8_t* )a_Pointer + LambdaOffset;
     }
 
-    void DestroyLambdaStorage( void* a_Pointer )
+    void DestroyLambda( void* a_Pointer )
     {
-        reinterpret_cast< LambdaStorageDestructorType >( ( uint8_t* )a_Pointer + LambdaDestructorOffset )( a_Pointer );
+        reinterpret_cast< DestructorType >( ( uint8_t* )a_Pointer + DestructorOffset )( a_Pointer );
     }
 }
 
@@ -67,7 +71,7 @@ private:
     {
         if constexpr ( _UsingLambdaStorage )
         {
-            a_Object = InvokerHelpers::GetLambdaPointer( a_Object )
+            a_Object = InvokerHelpers::GetLambda( m_Object );
         }
 
         return ( reinterpret_cast< FunctionTraits::GetObject< decltype( _Function ) >* >( a_Object )->*_Function )( std::forward< Args >( a_Args )... );
@@ -85,10 +89,6 @@ public:
     template < typename Object, auto _Function >
     Invoker( Object* a_Object, MemberFunction< _Function > ) { Bind< _Function >( a_Object ); }
 
-    //// Create an invoker from a callable object. This can be a static function, or functor type.
-    //template < typename T >
-    //Invoker( T& a_Function ) { Bind( a_Function ); }
-
     // Create an invoker from a callable object. This can be a static function, or functor type.
     template < typename T >
     Invoker( T&& a_Function ) { Bind( std::forward< T >( a_Function ) ); }
@@ -97,17 +97,23 @@ public:
     template < auto _Function, typename Object >
     void Bind( Object* a_Object, MemberFunction< _Function > a_Function = MemberFunction< _Function >{} )
     {
-        using Function = decltype( _Function );
-
-        static_assert( FunctionTraits::IsDynamic< Function >, "Function must be a member function type." );
-        static_assert( !( std::is_const_v< Object > && !FunctionTraits::IsConst< Function > ), "A non-const member function can not be called on a const object." );
-        static_assert( !( std::is_volatile_v< Object > && !FunctionTraits::IsVolatile< Function > ), "A non-volatile member function can not be called on a volatile object." );
-
+        using FunctionType = decltype( _Function );
+        using ObjectType = std::remove_const_t< Object >;
+        
+        static_assert( FunctionTraits::IsDynamic< FunctionType >, "Function must be a member function." );
+        static_assert( std::is_same_v< FunctionTraits::GetObject< FunctionType >, ObjectType >, "Member function object type must be the same as the pointer type provided." );
+        static_assert( FunctionTraits::IsConst< FunctionType > ||  )
+        
+        static_assert( !( std::is_const_v< Object > && !FunctionTraits::IsConst< FunctionType > ), "A non-const member function can not be called on a const object." );
+        static_assert( !( std::is_volatile_v< Object > && !FunctionTraits::IsVolatile< FunctionType > ), "A non-volatile member function can not be called on a volatile object." );
+        
+        InvokerHelpers::DestroyLambdaStorage( m_Object );
         m_Object = const_cast< std::remove_const_t< Object >* >( a_Object );
         m_Function = static_cast< void* >( Invocation< _Function > );
     }
 
-    // Statically binds a member function along with an object instance to the invoker.
+private:
+
     template < auto _Function, typename Object >
     void Bind( InvokerHelpers::LambdaStorage< Object >* a_Object, MemberFunction< _Function > a_Function = MemberFunction< _Function >{} )
     {
@@ -117,76 +123,49 @@ public:
         static_assert( !( std::is_const_v< Object > && !FunctionTraits::IsConst< Function > ), "A non-const member function can not be called on a const object." );
         static_assert( !( std::is_volatile_v< Object > && !FunctionTraits::IsVolatile< Function > ), "A non-volatile member function can not be called on a volatile object." );
 
-        m_Object = const_cast< InvokerHelpers::LambdaStorage< Object >* >( a_Object );
+
+        m_Object = a_Object;
         m_Function = static_cast< void* >( Invocation< _Function, true > );
     }
 
-    // Binds a function or functor to the invoker. Static lambdas will be decayed into a static function pointer.
-    //template < typename T >
-    //void Bind( T& a_Function )
-    //{
-    //    if constexpr ( std::is_same_v< std::remove_const_t< T >, Invoker > )
-    //    {
-    //        m_Object = a_Function.m_Object;
-    //        m_Function = a_Function.m_Function;
-    //    }
-    //    else if constexpr ( std::is_convertible_v< T, Return( * )( Args... ) > )
-    //    {
-    //        Bind( static_cast< Return( * )( Args... ) >( a_Function ) );
-    //    }
-    //    else
-    //    {
-    //        static_assert( !( std::is_const_v< std::remove_reference_t< T > > && !FunctionTraits::IsConst< decltype( &std::remove_reference_t< T >::operator() ) > ), "Invocation operator must be const for a const functor." );
-
-    //        Bind< &std::remove_reference_t< T >::operator() >( &a_Function );
-    //    }
-    //}
+public:
 
     // Binds a function or functor to the invoker. Static lambdas will be decayed into a static function pointer.
     template < typename T >
     void Bind( T&& a_Function )
     {
-        //if constexpr ( std::is_same_v< std::remove_const_t< T >, Invoker > )
-        //{
-        //    m_Object = a_Function.m_Object;
-        //    m_Function = a_Function.m_Function;
-        //}
-        //else if constexpr ( std::is_convertible_v< T, Return( * )( Args... ) > )
-        //{
-        //    Bind( static_cast< Return( * )( Args... ) >( a_Function ) );
-        //}
-        //else
-        //{
-        //    static_assert( !( std::is_const_v< std::remove_reference_t< T > > && !FunctionTraits::IsConst< decltype( &std::remove_reference_t< T >::operator() ) > ), "Invocation operator must be const for a const functor." );
-
-        //    Bind< &std::remove_reference_t< T >::operator() >( &a_Function );
-        //}
-
         if constexpr ( std::is_same_v< T, Invoker > )
         {
+            InvokerHelpers::DestroyIfLambdaStorage( m_Object );
             m_Object = a_Function.m_Object;
             m_Function = a_Function.m_Function;
         }
-        else if constexpr ( std::is_convertible_v < T, Return( * )( Args... ) )
+        else if constexpr ( std::is_convertible_v < T, Return( * )( Args... ) > )
         {
             Bind( static_cast< Return( * )( Args... ) >( a_Function ) );
         }
         else
         {
-            static_assert( !FunctionTraits::IsConst< decltype( &T::operator() ) > || !std::is_const_v< T >, "Invocation operator must be const for a const functor." );
-
-            if constexpr ( std::is_rvalue_reference_v< T > )
-            {
-                Bind< &T::operator() >( new InvokerHelpers::LambdaStorage< T >( std::move( a_Function ) ) );
-            }
-
+            using FunctorType = std::remove_reference_t< T >;
+            static_assert( !FunctionTraits::IsConst< decltype( &FunctorType::operator() ) > || !std::is_const_v< FunctorType >, "Invocation operator must be const for a const functor." );
             
+            InvokerHelpers::DestroyIfLambdaStorage( m_Object );
+
+            if constexpr ( std::is_rvalue_reference_v< decltype( a_Function ) > )
+            {
+                Bind< &FunctorType::operator() >( new InvokerHelpers::LambdaStorage< FunctorType >( std::move( a_Function ) ) );
+            }
+            else
+            {
+                Bind< &FunctorType::operator() >( &a_Function );
+            }
         }
     }
 
     // Bind a static function to the invoker.
     void Bind( Return( *a_Function )( Args... ) )
     {
+        InvokerHelpers::DestroyIfLambdaStorage( m_Object );
         m_Object = nullptr;
         m_Function = a_Function;
     }
@@ -194,6 +173,7 @@ public:
     // Clear invoker binding.
     void Unbind()
     {
+        InvokerHelpers::DestroyIfLambdaStorage( m_Object );
         m_Object = nullptr;
         m_Function = nullptr;
     }
@@ -218,22 +198,22 @@ public:
         }
 
         return m_Object ?
-            reinterpret_cast< Return( * )( void*, Args&&... ) >( m_Function )( m_Object, std::forward< Args >( a_Args )... ) :
-            reinterpret_cast< Return( * )(        Args  ... ) >( m_Function )(           std::forward< Args >( a_Args )... ) ;
+            reinterpret_cast< Return( * )( void*, Args... ) >( m_Function )( m_Object, std::forward< Args >( a_Args )... ) :
+            reinterpret_cast< Return( * )(        Args... ) >( m_Function )(           std::forward< Args >( a_Args )... ) ;
     }
 
     // Invoke the stored callable. This will fail if invoker is not bound to a functor or function.
     Return operator()( Args... a_Args ) const
     {
         return m_Object ?
-            reinterpret_cast< Return( * )( void*, Args&&... ) >( m_Function )( m_Object, std::forward< Args >( a_Args )... ) :
-            reinterpret_cast< Return( * )(        Args  ... ) >( m_Function )(           std::forward< Args >( a_Args )... ) ;
+            reinterpret_cast< Return( * )( void*, Args... ) >( m_Function )( m_Object, std::forward< Args >( a_Args )... ) :
+            reinterpret_cast< Return( * )(        Args... ) >( m_Function )(           std::forward< Args >( a_Args )... ) ;
     }
 
     // Is the invoker bound to a functor or function?
     inline operator bool() const
     {
-        return m_Object || m_Function;
+        return m_Function;
     }
 
     // Checks to see if the invoker is bound to the same functor or function and instance as another invoker.
@@ -254,10 +234,6 @@ public:
 
     // Checks to see if the invoker is bound to the same functor or function and instance as the one given.
     template < typename T >
-    inline bool operator==( T& a_Function ) const { return *this == Invoker( a_Function ); }
-
-    // Checks to see if the invoker is bound to the same functor or function and instance as the one given.
-    template < typename T >
     inline bool operator==( T&& a_Function ) const { return *this == Invoker( std::forward< T >( a_Function ) ); }
 
     // Checks to see if the invoker is bound to the same member function as the one provided.
@@ -270,10 +246,6 @@ public:
 
     // Clear invoker binding. Same as Unbind.
     inline Invoker& operator=( std::nullptr_t ) { Unbind(); return *this; }
-
-    // Assign a functor or function to the invoker.
-    template < typename T >
-    inline Invoker& operator=( T& a_Functor ) { Bind( a_Functor ); return *this; }
 
     // Assign a functor or function to the invoker.
     template < typename T >
