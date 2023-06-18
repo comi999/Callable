@@ -1,4 +1,4 @@
-#pragma +once
+#pragma once
 #include <vector>
 
 #include "FunctionTraits.hpp"
@@ -10,7 +10,7 @@ struct MemberFunction {};
 namespace InvokerHelpers
 {
     using LambdaTagType = uintptr_t;
-    using LambdaProcessorType = void*( * )( void*, bool );
+    using LambdaProcessorType = void( * )( void*&, bool );
     using LambdaOffsetType = size_t;
     
     static constexpr LambdaTagType LambdaStorageTag = ( LambdaOffsetType )0xABCDEFABCDEFABCD;
@@ -19,7 +19,7 @@ namespace InvokerHelpers
     static constexpr LambdaOffsetType LambdaOffset = LambdaProcessorOffset + sizeof( LambdaProcessorOffset );
 
     template < typename T >
-    void* LambdaProcessor( void*, bool );
+    void LambdaProcessor( void*&, bool );
 
     template < typename T >
     struct LambdaStorage
@@ -37,16 +37,15 @@ namespace InvokerHelpers
     };
 
     template < typename T >
-    void* LambdaProcessor( void* a_Pointer, bool a_Copy )
+    void LambdaProcessor( void*& a_Pointer, bool a_Copy )
     {
         if ( a_Copy )
         {
-            return new LambdaStorage< T >( ( ( LambdaStorage< T >*& )a_Pointer )->Lambda );
+            a_Pointer = new LambdaStorage< T >( ( ( LambdaStorage< T >*& )a_Pointer )->Lambda );
         }
         else
         {
             delete ( LambdaStorage< T >*& )a_Pointer;
-            return nullptr;
         }
     }
 
@@ -60,23 +59,19 @@ namespace InvokerHelpers
         return ( uint8_t* )a_Pointer + LambdaOffset;
     }
 
-    //LambdaProcessorType GetLambdaProcessor( void* a_Pointer )
-    //{
-    //    return ( LambdaProcessorType )*( ( uint8_t* )a_Pointer + LambdaProcessorOffset );
-    //}
+    LambdaProcessorType GetLambdaProcessor( void* a_Pointer )
+    {
+        return *( LambdaProcessorType* )( ( uint8_t* )a_Pointer + LambdaProcessorOffset );
+    }
 
     void DestroyLambdaStorage( void* a_Pointer )
     {
-        //auto processor = GetLambdaProcessor( a_Pointer );
-        //processor( a_Pointer, false );
-        auto func = *( void* ( * )( void*, bool ) )( ( uint8_t* )a_Pointer + LambdaProcessorOffset );
-        func( a_Pointer, false );
+        GetLambdaProcessor( a_Pointer )( a_Pointer, false );
     }
 
-    void* CopyLambdaStorage( void* a_Pointer )
+    void CopyLambdaStorage( void*& a_Pointer )
     {
-        return reinterpret_cast< void*( * )( void*, bool ) >( ( uint8_t* )a_Pointer + LambdaProcessorOffset )( a_Pointer, true );
-        //GetLambdaProcessor( a_Pointer )( a_Pointer, true );
+        GetLambdaProcessor( a_Pointer )( a_Pointer, true );
     }
 }
 
@@ -122,11 +117,11 @@ public:
 
     // Create an invoker from a callable object. This can be a static function, member function or lambda.
     template < typename Object, auto _Function >
-    Invoker( Object* a_Object, MemberFunction< _Function > ) { Bind< _Function >( a_Object ); }
+    Invoker( Object* a_Object, MemberFunction< _Function > ) : Invoker() { Bind< _Function >( a_Object ); }
 
     // Create an invoker from a callable object. This can be a static function, or functor type.
     template < typename T >
-    Invoker( T&& a_Function ) { Bind( std::forward< T >( a_Function ) ); }
+    Invoker( T&& a_Function ) : Invoker() { Bind( std::forward< T >( a_Function ) ); }
 
     // Bind a static function to the invoker.
     void Bind( Return( *a_Function )( Args... ) )
@@ -193,7 +188,7 @@ public:
             {
                 if ( InvokerHelpers::IsLambdaStorage( a_Function.m_Object ) )
                 {
-                    m_Object = InvokerHelpers::CopyLambdaStorage( a_Function.m_Object );
+                    InvokerHelpers::CopyLambdaStorage( m_Object = a_Function.m_Object );
                     m_Function = a_Function.m_Function;
                 }
                 else
@@ -239,6 +234,12 @@ public:
 
     // Is the bound function, if any at all, a static function?
     inline bool IsStatic() const { return !m_Object && m_Function; }
+
+    // Is the bound function, if any at all, a member function?
+    inline bool IsMember() const { return m_Object && !InvokerHelpers::IsLambdaStorage( m_Object ); }
+
+    // Is the bound function, if any at all, a lambda?
+    inline bool IsLambda() const { return m_Object && InvokerHelpers::IsLambdaStorage( m_Object ); }
 
     // Invoke the stored callable. _Safe set to true will make sure that
     // the invoker is only called if it is bound to a functor or function. Default Return if not.
