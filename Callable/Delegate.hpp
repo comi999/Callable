@@ -12,7 +12,13 @@ class Delegate
 private:
 
     using InvokerType = Invoker< Return, Args... >;
-    using ContainerType = std::vector< InvokerType >;
+    using ReturnType = Return;
+    using ArgumentTypes = std::tuple< Args... >;
+    using ContainerType = std::vector< Invoker< Return, Args... > >;
+    using IteratorType = typename ContainerType::iterator;
+    using CIteratorType = typename ContainerType::const_iterator;
+    using RIteratorType = typename ContainerType::reverse_iterator;
+    using CRIteratorType = typename ContainerType::const_reverse_iterator;
 
 public:
 
@@ -287,6 +293,45 @@ public:
     // The count of stored invokers.
     inline size_t Size() const { return m_Invokers.size(); }
 
+    // Get the collection of all invokers.
+    inline const ContainerType& GetInvocationList() const { return m_Invokers; }
+
+    // Get begin iterator.
+    inline IteratorType Begin() { return m_Invokers.begin(); }
+
+    // Get begin iterator.
+    inline CIteratorType Begin() const { return m_Invokers.begin(); }
+
+    // Get begin iterator.
+    inline CIteratorType CBegin() const { return m_Invokers.cbegin(); }
+
+    // Get reverse begin iterator.
+    inline RIteratorType RBegin() { return m_Invokers.rbegin(); }
+
+    // Get reverse begin iterator.
+    inline CRIteratorType RBegin() const { return m_Invokers.rbegin(); }
+
+    // Get reverse begin iterator.
+    inline CRIteratorType CRBegin() const { return m_Invokers.crbegin(); }
+
+    // Get end iterator.
+    inline IteratorType End() { return m_Invokers.end(); }
+
+    // Get end iterator.
+    inline CIteratorType End() const { return m_Invokers.end(); }
+
+    // Get end iterator.
+    inline CIteratorType CEnd() const { return m_Invokers.cend(); }
+
+    // Get reverse end iterator.
+    inline RIteratorType REnd() { return m_Invokers.rend(); }
+
+    // Get reverse end iterator.
+    inline CRIteratorType REnd() const { return m_Invokers.rend(); }
+
+    // Get reverse end iterator.
+    inline CRIteratorType CREnd() const { return m_Invokers.crend(); }
+
     // Copy from another delegate.
     Delegate& operator=( const Delegate& a_Delegate )
     {
@@ -336,3 +381,19 @@ private:
     mutable bool    m_IsBroadcasting;
     mutable int32_t m_Index;
 };
+
+namespace std
+{
+    template < typename Return, typename... Args > auto begin( Delegate< Return, Args... >& a_Delegate ) { return a_Delegate.Begin(); }
+    template < typename Return, typename... Args > auto begin( const Delegate< Return, Args... >& a_Delegate ) { return a_Delegate.Begin(); }
+    template < typename Return, typename... Args > auto cbegin( const Delegate< Return, Args... >& a_Delegate ) { return a_Delegate.CBegin(); }
+    template < typename Return, typename... Args > auto rbegin( Delegate< Return, Args... >& a_Delegate ) { return a_Delegate.RBegin(); }
+    template < typename Return, typename... Args > auto rbegin( const Delegate< Return, Args... >& a_Delegate ) { return a_Delegate.RBegin(); }
+    template < typename Return, typename... Args > auto crbegin( const Delegate< Return, Args... >& a_Delegate ) { return a_Delegate.CRBegin(); }
+    template < typename Return, typename... Args > auto end( Delegate< Return, Args... >& a_Delegate ) { return a_Delegate.End(); }
+    template < typename Return, typename... Args > auto end( const Delegate< Return, Args... >& a_Delegate ) { return a_Delegate.End(); }
+    template < typename Return, typename... Args > auto cend( const Delegate< Return, Args... >& a_Delegate ) { return a_Delegate.CEnd(); }
+    template < typename Return, typename... Args > auto rend( Delegate< Return, Args... >& a_Delegate ) { return a_Delegate.REnd(); }
+    template < typename Return, typename... Args > auto rend( const Delegate< Return, Args... >& a_Delegate ) { return a_Delegate.REnd(); }
+    template < typename Return, typename... Args > auto crend( const Delegate< Return, Args... >& a_Delegate ) { return a_Delegate.CREnd(); }
+}

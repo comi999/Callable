@@ -7,6 +7,7 @@
 template < auto _Function >
 struct MemberFunction {};
 
+// Helpers for invoker types.
 namespace InvokerHelpers
 {
     using LambdaTagType = uintptr_t;
