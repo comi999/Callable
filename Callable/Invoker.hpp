@@ -20,7 +20,7 @@ namespace InvokerHelpers
     static constexpr LambdaOffsetType LambdaOffset = LambdaProcessorOffset + sizeof( LambdaProcessorOffset );
 
     template < typename T >
-    void LambdaProcessor( void*&, bool );
+    static void LambdaProcessor( void*&, bool );
 
     template < typename T >
     struct LambdaStorage
@@ -38,7 +38,7 @@ namespace InvokerHelpers
     };
 
     template < typename T >
-    void LambdaProcessor( void*& a_Pointer, bool a_Copy )
+    static void LambdaProcessor( void*& a_Pointer, bool a_Copy )
     {
         if ( a_Copy )
         {
@@ -50,27 +50,27 @@ namespace InvokerHelpers
         }
     }
 
-    bool IsLambdaStorage( void* a_Pointer )
+    static bool IsLambdaStorage( void* a_Pointer )
     {
         return *( LambdaTagType* )a_Pointer == LambdaStorageTag;
     }
 
-    void* GetLambda( void* a_Pointer )
+    static void* GetLambda( void* a_Pointer )
     {
         return ( uint8_t* )a_Pointer + LambdaOffset;
     }
 
-    LambdaProcessorType GetLambdaProcessor( void* a_Pointer )
+    static LambdaProcessorType GetLambdaProcessor( void* a_Pointer )
     {
         return *( LambdaProcessorType* )( ( uint8_t* )a_Pointer + LambdaProcessorOffset );
     }
 
-    void DestroyLambdaStorage( void* a_Pointer )
+    static void DestroyLambdaStorage( void* a_Pointer )
     {
         GetLambdaProcessor( a_Pointer )( a_Pointer, false );
     }
 
-    void CopyLambdaStorage( void*& a_Pointer )
+    static void CopyLambdaStorage( void*& a_Pointer )
     {
         GetLambdaProcessor( a_Pointer )( a_Pointer, true );
     }
