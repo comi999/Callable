@@ -45,7 +45,7 @@ public:
     }
 
     // Add a functor or function to the delegate.
-    template < typename T >
+    template < typename T, typename = std::enable_if_t< std::is_invocable_r_v< Return, T, Args... > > >
     void Add( T&& a_Function ) { m_Invokers.emplace_back( std::forward< T >( a_Function ) ); }
 
     // Add an instance and member function to the delegate.
@@ -77,19 +77,7 @@ public:
     }
 
     // Add a functor or function to the delegate if it isn't already added to the delegate.
-    template < typename T >
-    void AddUnique( T& a_Function )
-    {
-        if ( std::find( m_Invokers.begin(), m_Invokers.end(), a_Function ) != m_Invokers.end() )
-        {
-            return;
-        }
-
-        m_Invokers.emplace_back( a_Function );
-    }
-
-    // Add a functor or function to the delegate if it isn't already added to the delegate.
-    template < typename T >
+    template < typename T, typename = std::enable_if_t< std::is_invocable_r_v< Return, T, Args... > > >
     void AddUnique( T&& a_Function )
     {
         if ( std::find( m_Invokers.begin(), m_Invokers.end(), a_Function ) != m_Invokers.end() )
@@ -113,7 +101,7 @@ public:
     }
 
     // Add a functor or function to the delegate if it isn't already added to the delegate, at the given index.
-    template < typename T >
+    template < typename T, typename = std::enable_if_t< std::is_invocable_r_v< Return, T, Args... > > >
     void AddUnique( size_t a_Index, T&& a_Function )
     {
         if ( std::find( m_Invokers.begin(), m_Invokers.end(), a_Function ) != m_Invokers.end() )
@@ -181,7 +169,7 @@ public:
             m_Invokers.pop_back();
         }
     }
-    
+
     // Remove an invoker from the delegate at the given index.
     void Remove( size_t a_Index )
     {
@@ -293,6 +281,9 @@ public:
     // The count of stored invokers.
     inline size_t Size() const { return m_Invokers.size(); }
 
+    // Is this delegate empty?
+    inline bool Empty() const { return m_Invokers.empty(); }
+
     // Get the collection of all invokers.
     inline const ContainerType& GetInvocationList() const { return m_Invokers; }
 
@@ -352,16 +343,8 @@ public:
     }
 
     // Add a functor or function object to the delegate.
-    template < typename T >
-    inline Delegate& operator+=( T& a_Function ) { Add( a_Function ); return *this; }
-
-    // Add a functor or function object to the delegate.
-    template < typename T >
+    template < typename T, typename = std::enable_if_t< std::is_invocable_r_v< Return, T, Args... > > >
     inline Delegate& operator+=( T&& a_Function ) { Add( std::forward< T >( a_Function ) ); return *this; }
-
-    // Remove a functor or function object to the delegate.
-    template < typename T >
-    inline Delegate& operator-=( T& a_Function ) { Remove( a_Function ); return *this; }
 
     // Remove a functor or function object to the delegate.
     template < typename T >
@@ -384,6 +367,8 @@ private:
 
 namespace std
 {
+    template < typename Return, typename... Args > auto empty( const Delegate< Return, Args... >& a_Delegate ) { return a_Delegate.Empty(); }
+    template < typename Return, typename... Args > auto size( const Delegate< Return, Args... >& a_Delegate ) { return a_Delegate.Size(); }
     template < typename Return, typename... Args > auto begin( Delegate< Return, Args... >& a_Delegate ) { return a_Delegate.Begin(); }
     template < typename Return, typename... Args > auto begin( const Delegate< Return, Args... >& a_Delegate ) { return a_Delegate.Begin(); }
     template < typename Return, typename... Args > auto cbegin( const Delegate< Return, Args... >& a_Delegate ) { return a_Delegate.CBegin(); }
