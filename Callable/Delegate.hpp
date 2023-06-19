@@ -45,7 +45,7 @@ public:
     }
 
     // Add a functor or function to the delegate.
-    template < typename T, typename = std::enable_if_t< std::is_invocable_r_v< Return, T, Args... > > >
+    template < typename T >
     void Add( T&& a_Function ) { m_Invokers.emplace_back( std::forward< T >( a_Function ) ); }
 
     // Add an instance and member function to the delegate.
@@ -77,7 +77,7 @@ public:
     }
 
     // Add a functor or function to the delegate if it isn't already added to the delegate.
-    template < typename T, typename = std::enable_if_t< std::is_invocable_r_v< Return, T, Args... > > >
+    template < typename T >
     void AddUnique( T&& a_Function )
     {
         if ( std::find( m_Invokers.begin(), m_Invokers.end(), a_Function ) != m_Invokers.end() )
@@ -101,7 +101,7 @@ public:
     }
 
     // Add a functor or function to the delegate if it isn't already added to the delegate, at the given index.
-    template < typename T, typename = std::enable_if_t< std::is_invocable_r_v< Return, T, Args... > > >
+    template < typename T >
     void AddUnique( size_t a_Index, T&& a_Function )
     {
         if ( std::find( m_Invokers.begin(), m_Invokers.end(), a_Function ) != m_Invokers.end() )
@@ -343,7 +343,7 @@ public:
     }
 
     // Add a functor or function object to the delegate.
-    template < typename T, typename = std::enable_if_t< std::is_invocable_r_v< Return, T, Args... > > >
+    template < typename T >
     inline Delegate& operator+=( T&& a_Function ) { Add( std::forward< T >( a_Function ) ); return *this; }
 
     // Remove a functor or function object to the delegate.

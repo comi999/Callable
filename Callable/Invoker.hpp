@@ -119,17 +119,17 @@ public:
     ~Invoker() { Unbind(); }
 
     // Will copy from another Invoker.
-    Invoker( const Invoker& a_Invoker ) { Bind( a_Invoker ); }
+    Invoker( const Invoker& a_Invoker ) : Invoker() { Bind( a_Invoker ); }
 
     // Will move from another Invoker.
-    Invoker( Invoker&& a_Invoker ) { Bind( std::move( a_Invoker ) ); }
+    Invoker( Invoker&& a_Invoker ) : Invoker() { Bind( std::move( a_Invoker ) ); }
 
     // Create an invoker from a callable object. This can be a static function, member function or lambda.
     template < typename Object, auto _Function >
     Invoker( Object* a_Object, MemberFunction< _Function > ) : Invoker() { Bind< _Function >( a_Object ); }
 
     // Create an invoker from a callable object. This can be a static function, or functor type.
-    template < typename T >
+    template < typename T, typename = std::enable_if_t< std::is_invocable_r_v< Return, T, Args... > > >
     Invoker( T&& a_Function ) : Invoker() { Bind( std::forward< T >( a_Function ) ); }
 
     // Will unbind any bound functions or functors.
@@ -305,6 +305,12 @@ public:
     // Checks to see if the invoker is bound to a different function or functor than the one given.
     template < typename T >
     inline bool operator!=( T&& a_Function ) const { return !( *this == std::forward< T >( a_Function ) ); }
+
+    // Copy from given invoker.
+    inline Invoker& operator=( const Invoker& a_Invoker ) { Bind( a_Invoker ); return *this; }
+
+    // Move from given invoker.
+    inline Invoker& operator=( Invoker&& a_Invoker ) { Bind( std::move( a_Invoker ) ); return *this; }
 
     // Clear invoker binding. Same as Unbind.
     inline Invoker& operator=( std::nullptr_t ) { Unbind(); return *this; }
