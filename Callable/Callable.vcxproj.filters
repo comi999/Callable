@@ -23,7 +23,7 @@
     <ClInclude Include="Delegate.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="FunctionTraits.hpp">
+    <ClInclude Include="function_traits.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Invoker.hpp">

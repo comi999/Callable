@@ -3,6 +3,36 @@
 
 #include "Invoker.hpp"
 
+template < typename Return, typename... Args >
+class Delegate;
+
+namespace std
+{
+    template < typename T >
+    struct is_delegate : public std::false_type {};
+
+    template < typename Return, typename... Args >
+    struct is_delegate< Invoker< Return, Args... > > : public std::true_type {};
+
+    template < typename T >
+    static constexpr bool is_delegate_v = is_delegate< T >::value;
+
+    template < typename T >
+    struct as_delegate { using type = typename as_delegate< function_signature_t< T > >::type; };
+
+    template <>
+    struct as_delegate< void > { using type = void; };
+
+    template < typename Return, typename... Args >
+    struct as_delegate< Return( Args... ) > { using type = Delegate< Return, Args... >; };
+
+    template < typename Return, typename... Args >
+    struct as_delegate< Delegate< Return, Args... > > { using type = Delegate< Return, Args... >; };
+
+    template < typename T >
+    using as_delegate_t = typename as_delegate< T >::type;
+}
+
 //==========================================================================
 // Delegates are a collection of stored invokers.
 //==========================================================================
@@ -211,6 +241,7 @@ public:
     void RemoveAll( Object* a_Object, MemberFunction< _Function > a_Function = MemberFunction< _Function >{} )
     {
         InvokerType Check( a_Object, a_Function );
+
         for ( uint32_t i = m_Invokers.size() - 1; i > m_Index; --i )
         {
             if ( m_Invokers[ i ] == Check )
@@ -367,6 +398,9 @@ private:
 
 namespace std
 {
+    template < typename T >
+    static auto make_delegate( T&& a_Object ) { return std::move( as_delegate_t< remove_reference_t< T > >() += std::forward< T >( a_Object ) ); }
+
     template < typename Return, typename... Args > auto empty( const Delegate< Return, Args... >& a_Delegate ) { return a_Delegate.Empty(); }
     template < typename Return, typename... Args > auto size( const Delegate< Return, Args... >& a_Delegate ) { return a_Delegate.Size(); }
     template < typename Return, typename... Args > auto begin( Delegate< Return, Args... >& a_Delegate ) { return a_Delegate.Begin(); }

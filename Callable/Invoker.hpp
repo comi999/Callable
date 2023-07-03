@@ -1,11 +1,66 @@
 #pragma once
 #include <vector>
 
-#include "FunctionTraits.hpp"
+#include "function_traits.hpp"
 
-// Static storage object for a member function pointer. Use as MemberFunction<&Object::Member>{}.
+template < typename Return, typename... Args >
+class Invoker;
+
+namespace std
+{
+    template < typename T >
+    struct is_invoker : public std::false_type {};
+
+    template < typename Return, typename... Args >
+    struct is_invoker< Invoker< Return, Args... > > : public std::true_type {};
+
+    template < typename T >
+    static constexpr bool is_invoker_v = is_invoker< T >::value;
+
+    template < typename T >
+    struct is_action : public std::false_type {};
+
+    template < typename... Args >
+    struct is_action< Invoker< void, Args... > > : public std::true_type {};
+
+    template < typename T >
+    static constexpr bool is_action_v = is_action< T >::value;
+
+    template < typename T >
+    struct is_predicate : public std::false_type {};
+
+    template < typename... Args >
+    struct is_predicate< Invoker< bool, Args... > > : public std::true_type {};
+
+    template < typename T >
+    static constexpr bool is_predicate_v = is_predicate< T >::value;
+
+    template < typename T >
+    struct as_invoker { using type = typename as_invoker< function_signature_t< T > >::type; };
+
+    template <>
+    struct as_invoker< void > { using type = void; };
+
+    template < typename Return, typename... Args >
+    struct as_invoker< Return( Args... ) > { using type = Invoker< Return, Args... >; };
+
+    template < typename Return, typename... Args >
+    struct as_invoker< Invoker< Return, Args... > > { using type = Invoker< Return, Args... >; };
+
+    template < typename T >
+    using as_invoker_t = typename as_invoker< T >::type;
+}
+
+// Static storage object for a member function. Use as MemberFunction<&Object::Member>{}.
 template < auto _Function >
-struct MemberFunction {};
+struct MemberFunction
+{
+    using TraitsType = std::function_traits< decltype( _Function ) >;
+    using ReturnType = typename TraitsType::return_type;
+    using ObjectType = typename TraitsType::object_type;
+    using ArgumentsType = typename TraitsType::arguments_type;
+    using SignatureType = typename TraitsType::signature_type;
+};
 
 // Helpers for invoker types.
 namespace InvokerHelpers
@@ -95,7 +150,7 @@ private:
     template < auto _Function, bool _UsingLambdaStorage = false >
     static Return Invocation( void* a_Object, Args... a_Args )
     {
-        using ObjectType = FunctionTraits::GetObject< decltype( _Function ) >;
+        using ObjectType = std::function_object_t< decltype( _Function ) >;
 
         if constexpr ( _UsingLambdaStorage )
         {
@@ -122,7 +177,7 @@ public:
     Invoker( const Invoker& a_Invoker ) : Invoker() { Bind( a_Invoker ); }
 
     // Move from another Invoker.
-    Invoker( Invoker&& a_Invoker ) : Invoker() { Bind( std::move( a_Invoker ) ); }
+    Invoker( Invoker&& a_Invoker ) noexcept : Invoker() { Bind( std::move( a_Invoker ) ); }
 
     // Create from lambda, functor or static funciton.
     template < typename T >
@@ -199,10 +254,7 @@ public:
         using FunctionType = decltype( _Function );
         using ObjectType = std::decay_t< T >;
 
-        static_assert( FunctionTraits::IsDynamic< FunctionType >, "Function must be a member function." );
-        //static_assert( std::is_base< FunctionTraits::GetObject< FunctionType >, ObjectType >, "Member function object type must be the same as the pointer type provided." );
-        static_assert( FunctionTraits::IsConst< FunctionType > || !std::is_const_v< T >, "A non-const member function can not be called on a const object." );
-        static_assert( FunctionTraits::IsVolatile< FunctionType > || !std::is_volatile_v< T >, "A non-volatile member function can not be called on a volatile object." );
+        static_assert( std::is_member_function_compatible_v< decltype( _Function ), std::remove_reference_t< T > >, "Function type is not callable on given object." );
 
         Unbind();
 
@@ -332,3 +384,12 @@ using Action = Invoker< void, Args... >;
 // A Predicate is an invoker that returns bool.
 template < typename... Args >
 using Predicate = Invoker< bool, Args... >;
+
+namespace std
+{
+    template < typename T >
+    static auto make_invoker( T&& a_Object ) { return as_invoker_t< std::remove_reference_t< T > >( std::forward< T >( a_Object ) ); }
+
+    template < auto _Function, typename T >
+    static auto make_invoker( T&& a_Object, MemberFunction< _Function > a_Function = MemberFunction< _Function >{} ) { return as_invoker_t< decltype( _Function ) >( std::forward< T >( a_Object ), a_Function ); }
+}

@@ -135,7 +135,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Delegate.hpp" />
-    <ClInclude Include="FunctionTraits.hpp" />
+    <ClInclude Include="function_traits.hpp" />
     <ClInclude Include="Invoker.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
