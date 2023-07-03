@@ -394,8 +394,8 @@ using Predicate = Invoker< bool, Args... >;
 namespace std
 {
     template < typename T >
-    static auto make_invoker( T&& a_Object ) { return as_invoker_t< std::remove_reference_t< T > >( std::forward< T >( a_Object ) ); }
+    static auto make_invoker( T&& a_Object ) { return as_invoker_t< remove_pointer_t< remove_reference_t< T > > >( forward< T >( a_Object ) ); }
 
     template < auto _Function, typename T >
-    static auto make_invoker( T&& a_Object, MemberFunction< _Function > a_Function = MemberFunction< _Function >{} ) { return as_invoker_t< decltype( _Function ) >( std::forward< T >( a_Object ), a_Function ); }
+    static auto make_invoker( T&& a_Object, MemberFunction< _Function > a_Function = MemberFunction< _Function >{} ) { return as_invoker_t< decltype( _Function ) >( forward< T >( a_Object ), a_Function ); }
 }

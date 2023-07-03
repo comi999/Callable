@@ -399,7 +399,14 @@ private:
 namespace std
 {
     template < typename T >
-    static auto make_delegate( T&& a_Object ) { return std::move( as_delegate_t< remove_reference_t< T > >() += std::forward< T >( a_Object ) ); }
+    static auto make_delegate( T&& a_Object ) { return std::move( as_delegate_t< remove_pointer_t< remove_reference_t< T > > >() += forward< T >( a_Object ) ); }
+
+    template < auto _Function, typename T >
+    static auto make_delegate( T&& a_Object, MemberFunction< _Function > a_Function = MemberFunction< _Function >{} ) 
+    {
+        using FunctionType = decltype( _Function );
+        return std::move( as_delegate_t< FunctionType >() += as_invoker_t< FunctionType >( forward< T >( a_Object ), a_Function ) );
+    }
 
     template < typename Return, typename... Args > auto empty( const Delegate< Return, Args... >& a_Delegate ) { return a_Delegate.Empty(); }
     template < typename Return, typename... Args > auto size( const Delegate< Return, Args... >& a_Delegate ) { return a_Delegate.Size(); }

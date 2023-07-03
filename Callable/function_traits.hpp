@@ -177,6 +177,33 @@ namespace std
 		using signature_type = Return( Args... );
 	};
 
+	template < typename Object, typename Return, typename... Args >
+	struct function_traits< Return( Object::* const )( Args... ) >
+	{
+		using return_type = Return;
+		using object_type = Object;
+		using arguments_type = tuple< Args... >;
+		using signature_type = Return( Args... );
+	};
+
+	template < typename Object, typename Return, typename... Args >
+	struct function_traits< Return( Object::* volatile )( Args... ) >
+	{
+		using return_type = Return;
+		using object_type = Object;
+		using arguments_type = tuple< Args... >;
+		using signature_type = Return( Args... );
+	};
+
+	template < typename Object, typename Return, typename... Args >
+	struct function_traits< Return( Object::* const volatile )( Args... ) >
+	{
+		using return_type = Return;
+		using object_type = Object;
+		using arguments_type = tuple< Args... >;
+		using signature_type = Return( Args... );
+	};
+
 	template < typename T >
 	struct function_return { using type = typename function_traits< T >::return_type; };
 
