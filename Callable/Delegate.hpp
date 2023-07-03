@@ -245,7 +245,7 @@ public:
 
         for ( ; m_Index < m_Invokers.size(); ++m_Index )
         {
-            ( void )m_Invokers[ m_Index ].Invoke< _Safe >( std::forward< Args >( a_Args )... );
+            ( void )m_Invokers[ m_Index ].InvokeSafe( std::forward< Args >( a_Args )... );
         }
 
         m_IsBroadcasting = false;
@@ -265,7 +265,7 @@ public:
 
         for ( ; m_Index < m_Invokers.size(); ++m_Index )
         {
-            ( void )m_Invokers[ m_Index ].Invoke< false >( std::forward< Args >( a_Args )... );
+            ( void )m_Invokers[ m_Index ].InvokeSafe( std::forward< Args >( a_Args )... );
         }
 
         m_IsBroadcasting = false;

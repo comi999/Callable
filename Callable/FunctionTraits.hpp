@@ -1,5 +1,139 @@
 #pragma once
 #include <tuple>
+#include <type_traits>
+
+template < typename Return, typename... Args >
+class Invoker;
+
+template < typename Return, typename... Args >
+class Delegate;
+
+namespace std
+{
+	template < typename T >
+	struct is_invoker : public std::false_type {};
+
+	template < typename Return, typename... Args >
+	struct is_invoker< Invoker< Return, Args... > > : public std::true_type {};
+
+	template < typename T >
+	static constexpr bool is_invoker_v = is_invoker< T >::value;
+
+	template < typename T >
+	struct is_action : public std::false_type {};
+
+	template < typename... Args >
+	struct is_action< Invoker< void, Args... > > : public std::true_type {};
+
+	template < typename T >
+	static constexpr bool is_action_v = is_action< T >::value;
+
+	template < typename T >
+	struct is_predicate : public std::false_type {};
+
+	template < typename... Args >
+	struct is_predicate< Invoker< bool, Args... > > : public std::true_type {};
+
+	template < typename T >
+	static constexpr bool is_predicate_v = is_predicate< T >::value;
+
+	template < typename T >
+	struct is_delegate : public std::false_type {};
+
+	template < typename Return, typename... Args >
+	struct is_delegate< Invoker< Return, Args... > > : public std::true_type {};
+
+	template < typename T >
+	static constexpr bool is_delegate_v = is_delegate< T >::value;
+
+	template < typename T >
+	struct is_static_function : public std::false_type {};
+
+	template < typename Return, typename... Args >
+	struct is_static_function< Return( * )( Args... ) > : public std::true_type {};
+
+	template < typename Return, typename... Args >
+	struct is_static_function< Return( & )( Args... ) > : public std::true_type {};
+
+	template < typename Return, typename... Args >
+	struct is_static_function< Return( Args... ) > : public std::true_type {};
+
+	template < typename T >
+	static constexpr bool is_static_function_v = is_static_function< T >::value;
+
+	template < typename T >
+	struct is_member_function : public std::false_type {};
+
+	template < typename T, typename Return, typename... Args >
+	struct is_member_function< Return( T::* )( Args... ) > : public std::true_type {};
+
+	template < typename T, typename Return, typename... Args >
+	struct is_member_function< Return( T::* )( Args... ) const > : public std::true_type {};
+
+	template < typename T, typename Return, typename... Args >
+	struct is_member_function< Return( T::* )( Args... ) volatile > : public std::true_type {};
+
+	template < typename T, typename Return, typename... Args >
+	struct is_member_function< Return( T::* )( Args... ) const volatile > : public std::true_type {};
+
+	template < typename T >
+	static constexpr bool is_member_function_v = is_member_function< T >::value;
+	
+	template < typename T >
+	struct is_const_member_function : public std::false_type {};
+
+	template < typename T, typename Return, typename... Args >
+	struct is_const_member_function< Return( T::* )( Args... ) const > : public std::true_type {};
+
+	template < typename T, typename Return, typename... Args >
+	struct is_const_member_function< Return( T::* )( Args... ) const volatile > : public std::true_type {};
+
+	template < typename T >
+	static constexpr bool is_const_member_function_v = is_const_member_function< T >::value;
+
+	template < typename T >
+	struct is_volatile_member_function : public std::false_type {};
+
+	template < typename T, typename Return, typename... Args >
+	struct is_volatile_member_function< Return( T::* )( Args... ) volatile > : public std::true_type {};
+
+	template < typename T, typename Return, typename... Args >
+	struct is_volatile_member_function< Return( T::* )( Args... ) const volatile > : public std::true_type {};
+
+	template < typename T >
+	static constexpr bool is_volatile_member_function_v = is_volatile_member_function< T >::value;
+
+	template < typename T >
+	struct is_lambda : public std::bool_constant< !is_static_function_v< T > && !is_member_function_v< T > && std::is_invocable_v< T > > {};
+
+	template < typename T >
+	static constexpr bool is_lambda_v = is_lambda< T >::value;
+
+	template < typename T >
+	struct function_traits
+	{
+		using return_type = void;
+		using arguments_type = std::tuple<>;
+		using
+	};
+}
+
+
+struct Struct
+{
+	static int static_func() {}
+
+	int member_func() volatile {}
+
+	int operator() () {}
+};
+
+auto lam = []( int ) { return 0; };
+
+using l =
+std::underlying_type_t <decltype( lam )>;
+
+static constexpr bool val = std::is_lambda_v< l >;
 
 //==========================================================================
 // Utilities for determining traits of function types.
