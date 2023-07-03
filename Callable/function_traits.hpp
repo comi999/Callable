@@ -85,7 +85,7 @@ namespace std
 
 	template < typename T >
 	struct function_call< T, true > 
-	{ 
+	{
 		static constexpr auto value = &T::operator();
 		using type = decltype( value );
 	};

@@ -254,7 +254,7 @@ public:
         using FunctionType = decltype( _Function );
         using ObjectType = std::decay_t< T >;
 
-        static_assert( std::is_member_function_compatible_v< decltype( _Function ), std::remove_reference_t< T > >, "Function type is not callable on given object." );
+        static_assert( std::is_member_function_compatible_v< decltype( _Function ), std::remove_pointer_t< std::remove_reference_t< T > > >, "Function type is not callable on given object." );
 
         Unbind();
 
@@ -354,7 +354,7 @@ public:
 
     // Checks to see if the invoker is bound to the same functor or function and instance as the one given.
     template < typename T >
-    bool operator==( T&& a_Function ) const { return *this == Invoker( std::forward< T >( a_Function ) ); }
+    bool operator==( T&& a_Object ) const { return *this == Invoker( std::forward< T >( a_Object ) ); }
 
     // Checks to see if the invoker is bound to the same member function as the one provided.
     template < auto _Function >
@@ -362,14 +362,20 @@ public:
 
     // Checks to see if the invoker is bound to a different function or functor than the one given.
     template < typename T >
-    bool operator!=( T&& a_Function ) const { return !( *this == std::forward< T >( a_Function ) ); }
+    bool operator!=( T&& a_Object ) const { return !( *this == std::forward< T >( a_Object ) ); }
 
     // Clear invoker binding. Same as Unbind.
     Invoker& operator=( std::nullptr_t ) { Unbind(); return *this; }
 
-    // Assign a functor or function to the invoker. Will copy/move from compatible Invokers.
+    // Copy from an invoker.
+    Invoker& operator=( const Invoker& a_Invoker ) { Bind( a_Invoker ); return *this; }
+
+    // Move from an invoker.
+    Invoker& operator=( Invoker&& a_Invoker ) { Bind( std::move( a_Invoker ) ); return *this; }
+
+    // Assign a functor or function to the invoker.
     template < typename T >
-    Invoker& operator=( T&& a_Functor ) { Bind( std::forward< T >( a_Functor ) ); return *this; }
+    Invoker& operator=( T&& a_Object ) { Bind( std::forward< T >( a_Object ) ); return *this; }
 
 private:
 
