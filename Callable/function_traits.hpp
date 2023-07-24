@@ -85,7 +85,7 @@ namespace std
 
 	template < typename T >
 	struct function_call< T, true > 
-	{ 
+	{
 		static constexpr auto value = &T::operator();
 		using type = decltype( value );
 	};
@@ -170,6 +170,114 @@ namespace std
 
 	template < typename Object, typename Return, typename... Args >
 	struct function_traits< Return( Object::* )( Args... ) const volatile >
+	{
+		using return_type = Return;
+		using object_type = Object;
+		using arguments_type = tuple< Args... >;
+		using signature_type = Return( Args... );
+	};
+
+	template < typename Object, typename Return, typename... Args >
+	struct function_traits< Return( Object::* const )( Args... ) >
+	{
+		using return_type = Return;
+		using object_type = Object;
+		using arguments_type = tuple< Args... >;
+		using signature_type = Return( Args... );
+	};
+
+	template < typename Object, typename Return, typename... Args >
+	struct function_traits< Return( Object::* const )( Args... ) const >
+	{
+		using return_type = Return;
+		using object_type = Object;
+		using arguments_type = tuple< Args... >;
+		using signature_type = Return( Args... );
+	};
+
+	template < typename Object, typename Return, typename... Args >
+	struct function_traits< Return( Object::* const )( Args... ) volatile >
+	{
+		using return_type = Return;
+		using object_type = Object;
+		using arguments_type = tuple< Args... >;
+		using signature_type = Return( Args... );
+	};
+
+	template < typename Object, typename Return, typename... Args >
+	struct function_traits< Return( Object::* const )( Args... ) const volatile >
+	{
+		using return_type = Return;
+		using object_type = Object;
+		using arguments_type = tuple< Args... >;
+		using signature_type = Return( Args... );
+	};
+
+	template < typename Object, typename Return, typename... Args >
+	struct function_traits< Return( Object::* volatile )( Args... ) >
+	{
+		using return_type = Return;
+		using object_type = Object;
+		using arguments_type = tuple< Args... >;
+		using signature_type = Return( Args... );
+	};
+
+	template < typename Object, typename Return, typename... Args >
+	struct function_traits< Return( Object::* volatile )( Args... ) const >
+	{
+		using return_type = Return;
+		using object_type = Object;
+		using arguments_type = tuple< Args... >;
+		using signature_type = Return( Args... );
+	};
+
+	template < typename Object, typename Return, typename... Args >
+	struct function_traits< Return( Object::* volatile )( Args... ) volatile >
+	{
+		using return_type = Return;
+		using object_type = Object;
+		using arguments_type = tuple< Args... >;
+		using signature_type = Return( Args... );
+	};
+
+	template < typename Object, typename Return, typename... Args >
+	struct function_traits< Return( Object::* volatile )( Args... ) const volatile >
+	{
+		using return_type = Return;
+		using object_type = Object;
+		using arguments_type = tuple< Args... >;
+		using signature_type = Return( Args... );
+	};
+
+	template < typename Object, typename Return, typename... Args >
+	struct function_traits< Return( Object::* const volatile )( Args... ) >
+	{
+		using return_type = Return;
+		using object_type = Object;
+		using arguments_type = tuple< Args... >;
+		using signature_type = Return( Args... );
+	};
+
+	template < typename Object, typename Return, typename... Args >
+	struct function_traits< Return( Object::* const volatile )( Args... ) const >
+	{
+		using return_type = Return;
+		using object_type = Object;
+		using arguments_type = tuple< Args... >;
+		using signature_type = Return( Args... );
+	};
+
+	template < typename Object, typename Return, typename... Args >
+	struct function_traits< Return( Object::* const volatile )( Args... ) volatile >
+	{
+		using return_type = Return;
+		using object_type = Object;
+		using arguments_type = tuple< Args... >;
+		using signature_type = Return( Args... );
+	};
+
+	template < typename Object, typename Return, typename... Args >
+	struct function_traits< Return( Object::* const volatile )( Args... ) const volatile >
 	{
 		using return_type = Return;
 		using object_type = Object;
